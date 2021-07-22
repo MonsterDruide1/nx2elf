@@ -876,7 +876,7 @@ struct NsoFile {
           phdr->p_align = 1;
         } else {
           phdr->p_memsz = seg.mem_size;
-          phdr->p_align = seg.bss_align;
+          phdr->p_align = std::max(1u, seg.bss_align);
         }
 
         memcpy(&elf[0] + phdr->p_offset, &image[seg.mem_offset],
