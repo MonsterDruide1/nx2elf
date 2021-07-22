@@ -2,6 +2,7 @@
 
 #include "elf_eh.h"
 #include "types.h"
+#include <cstdio>
 
 #define DW_EH_PE_absptr 0x00
 #define DW_EH_PE_omit 0xff
