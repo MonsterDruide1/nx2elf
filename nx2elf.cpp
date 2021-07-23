@@ -8,6 +8,8 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <memory>
+#include <vector>
 #include "elf.h"
 #include "elf_eh.h"
 #include "lz4.h"
