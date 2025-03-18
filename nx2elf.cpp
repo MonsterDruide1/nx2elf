@@ -600,7 +600,7 @@ struct NsoFile {
           shdr.sh_size = seg.mem_size;
           shdr.sh_addralign = sizeof(u64);
         } else if (i == kData && (location >= seg_mem_end &&
-                                  location < seg_mem_end + seg.bss_align)) {
+                                  location <= seg_mem_end + seg.bss_align)) {
           // .bss
           const char* name = ".bss";
           shstrtab.AddString(name);
