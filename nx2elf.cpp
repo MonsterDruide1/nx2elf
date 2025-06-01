@@ -568,6 +568,14 @@ struct NsoFile {
       func(*sym, i);
     }
   }
+  void WriteUncompressedNso(const fs::path& path) {
+    u32 image_size = header.segments[kData].mem_offset + 
+                     header.segments[kData].mem_size;
+    std::vector<u8> data = std::vector<u8>(sizeof(NsoHeader) + image_size);
+    memcpy(data.data(), &header, sizeof(NsoHeader));
+    memcpy(data.data() + sizeof(NsoHeader), image.data(), image_size);
+    File::Write(path, data);
+  }
   bool WriteElf(const fs::path& path) {
     StringTable shstrtab;
     shstrtab.AddString(".shstrtab");
@@ -1305,7 +1313,7 @@ const std::array<u8, 4> NsoFile::nso_magic{{'N', 'S', 'O', '0'}};
 const std::array<u8, 4> NsoFile::nro_magic{{'N', 'R', 'O', '0'}};
 const std::array<u8, 4> NsoFile::mod_magic{{'M', 'O', 'D', '0'}};
 
-static bool NsoToElf(const fs::path& path, bool verbose = false) {
+static bool NsoToElf(const fs::path& path, bool export_uncompressed, bool verbose = false) {
   NsoFile nso;
   if (!nso.Load(path)) {
     return false;
@@ -1319,6 +1327,13 @@ static bool NsoToElf(const fs::path& path, bool verbose = false) {
   elf_path.replace_extension(".elf");
   bool rv = nso.WriteElf(elf_path);
   puts("");
+
+  if (export_uncompressed) {
+    fs::path uncompressed_path = path;
+    uncompressed_path.replace_extension(".uncompressed.nso");
+    nso.WriteUncompressedNso(uncompressed_path);
+  }
+
   return rv;
 }
 
@@ -1327,12 +1342,13 @@ int main(int argc, char** argv) {
     fputs("file or directory", stderr);
     return 1;
   }
+  bool export_uncompressed = argc > 2 && std::string(argv[2]) == "--export-uncompressed";
 
   fs::path path(argv[1]);
   if (fs::is_directory(path)) {
-    File::iter_files(path, [](const fs::path& nx_path) { NsoToElf(nx_path); });
+    File::iter_files(path, [export_uncompressed](const fs::path& nx_path) { NsoToElf(nx_path, export_uncompressed); });
   } else {
-    NsoToElf(path);
+    NsoToElf(path, export_uncompressed);
   }
   return 0;
 }
