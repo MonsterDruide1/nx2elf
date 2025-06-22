@@ -569,10 +569,21 @@ struct NsoFile {
     }
   }
   void WriteUncompressedNso(const fs::path& path) {
-    u32 image_size = header.segments[kData].mem_offset + 
-                     header.segments[kData].mem_size;
+    NsoHeader new_header = header;
+    // clear compression flags
+    new_header.flags &= 0xf8;
+    // fix segment offsets and size
+    for (int i = 0; i < kNumSegment; i++) {
+      new_header.segments[i].file_offset = new_header.segments[i].mem_offset + sizeof(NsoHeader);
+      new_header.segment_file_sizes[i] = new_header.segments[i].mem_size;
+    }
+    new_header.segments[kText].bss_align = 0x100;
+    new_header.segments[kRodata].bss_align = 0;
+
+    u32 image_size = new_header.segments[kData].mem_offset + 
+                     new_header.segments[kData].mem_size;
     std::vector<u8> data = std::vector<u8>(sizeof(NsoHeader) + image_size);
-    memcpy(data.data(), &header, sizeof(NsoHeader));
+    memcpy(data.data(), &new_header, sizeof(NsoHeader));
     memcpy(data.data() + sizeof(NsoHeader), image.data(), image_size);
     File::Write(path, data);
   }
