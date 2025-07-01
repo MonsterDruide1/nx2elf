@@ -568,7 +568,7 @@ struct NsoFile {
       func(*sym, i);
     }
   }
-  void WriteUncompressedNso(const fs::path& path) {
+  bool WriteUncompressedNso(const fs::path& path) {
     NsoHeader new_header = header;
     // clear compression flags
     new_header.flags &= 0xf8;
@@ -586,6 +586,7 @@ struct NsoFile {
     memcpy(data.data(), &new_header, sizeof(NsoHeader));
     memcpy(data.data() + sizeof(NsoHeader), image.data(), image_size);
     File::Write(path, data);
+    return true;
   }
   bool WriteElf(const fs::path& path) {
     StringTable shstrtab;
@@ -1324,7 +1325,7 @@ const std::array<u8, 4> NsoFile::nso_magic{{'N', 'S', 'O', '0'}};
 const std::array<u8, 4> NsoFile::nro_magic{{'N', 'R', 'O', '0'}};
 const std::array<u8, 4> NsoFile::mod_magic{{'M', 'O', 'D', '0'}};
 
-static bool NsoToElf(const fs::path& path, bool export_uncompressed, bool verbose = false) {
+static bool NsoToElf(const fs::path& path, const char* elf_path, const char* uncompressed_path, bool verbose = false) {
   NsoFile nso;
   if (!nso.Load(path)) {
     return false;
@@ -1334,32 +1335,47 @@ static bool NsoToElf(const fs::path& path, bool export_uncompressed, bool verbos
   if (verbose) {
     nso.DumpElfInfo();
   }
-  fs::path elf_path(path);
-  elf_path.replace_extension(".elf");
-  bool rv = nso.WriteElf(elf_path);
-  puts("");
 
-  if (export_uncompressed) {
-    fs::path uncompressed_path = path;
-    uncompressed_path.replace_extension(".uncompressed.nso");
-    nso.WriteUncompressedNso(uncompressed_path);
-  }
+  bool success = true;
+  if (elf_path)
+    success &= nso.WriteElf(fs::path(elf_path));
 
-  return rv;
+  if (uncompressed_path)
+    success &= nso.WriteUncompressedNso(fs::path(uncompressed_path));
+
+  return success;
 }
 
 int main(int argc, char** argv) {
-  if (argc < 2 || !fs::exists(argv[1])) {
-    fputs("file or directory", stderr);
+  const char* usage = "Usage: nso2elf <file or directory> [--export-uncompressed <path>] [--export-elf <path>]\n";
+
+  if (argc < 2) {
+    fputs(usage, stderr);
     return 1;
   }
-  bool export_uncompressed = argc > 2 && std::string(argv[2]) == "--export-uncompressed";
 
-  fs::path path(argv[1]);
+  const char* input_path = nullptr;
+  const char* elf_path = nullptr;
+  const char* uncompressed_path = nullptr;
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--export-elf") == 0) {
+      elf_path = argv[++i];
+    } else if (strcmp(argv[i], "--export-uncompressed") == 0) {
+      uncompressed_path = argv[++i];
+    } else if (input_path == nullptr) {
+      input_path = argv[i];
+    } else {
+      fprintf(stderr, "Unknown option: %s\n", argv[i]);
+      fputs(usage, stderr);
+      return 1;
+    }
+  }
+
+  fs::path path(input_path);
   if (fs::is_directory(path)) {
-    File::iter_files(path, [export_uncompressed](const fs::path& nx_path) { NsoToElf(nx_path, export_uncompressed); });
+    File::iter_files(path, [elf_path, uncompressed_path](const fs::path& nx_path) { NsoToElf(nx_path, elf_path, uncompressed_path); });
   } else {
-    NsoToElf(path, export_uncompressed);
+    NsoToElf(path, elf_path, uncompressed_path);
   }
   return 0;
 }
