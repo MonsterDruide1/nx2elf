@@ -1347,7 +1347,7 @@ static bool NsoToElf(const fs::path& path, const char* elf_path, const char* unc
 }
 
 int main(int argc, char** argv) {
-  const char* usage = "Usage: nso2elf <file or directory> [--export-uncompressed <path>] [--export-elf <path>]\n";
+  const char* usage = "Usage: nx2elf <file or directory> [--export-uncompressed <path>] [--export-elf <path>]\n";
 
   if (argc < 2) {
     fputs(usage, stderr);
